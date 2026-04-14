@@ -1,0 +1,590 @@
+openapi: 3.0.0
+info:
+  title: タクシー配車システム連携API標準仕様書
+  description: |-
+    本ドキュメントは、タクシー配車システム連携における配車アプリおよび配車管理システム向けAPI仕様を定義した OpenAPI 定義です。<br>各 API は、ユーザーからの配車依頼を配車管理システムへ連携し、配車状況や車両位置情報をアプリと同期するなど、配車アプリと配車システム間の相互接続性向上を意図して設計されています。<br>HTTP ステータスコードが `200 OK` 以外の場合のレスポンス構造は RFC 9457 に準拠しています。<br>本仕様書に記載されている HTTP ステータスコードは、各 API において一般的に想定されるステータスコードの推奨例です。<br>実装にあたっては、これらを基準としつつ、サービスの要件や運用状況に応じて必要に応じたステータスコードを柔軟に追加してください。
+  contact:
+    url: https://www.mlit.go.jp/commmmons/
+  version: "1.0.0"
+tags:
+  - name: orders
+    description: 配車関連API
+paths:
+  /orders:
+    post:
+      tags:
+        - orders
+      summary: "(M14-IF-010)配車依頼"
+      operationId: postOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Order"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401UnAuthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalServerError"
+  /orders/by/order-id:
+    get:
+      tags:
+        - orders
+      summary: "(M14-IF-020)配車情報複数取得"
+      operationId: getOrdersByOrderId
+      parameters:
+        - in: query
+          name: order_ids
+          description: リクエスター 配車依頼ユニークID(カンマ区切りで指定。一度に取得できるのは30件が最大。)<br/>- t_order.requester_order_id
+          example: 1,2,3,4,5,6,7,8,9
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/orderId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GetOrder"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401UnAuthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalServerError"
+  /orders/by/order-id/{order_id}:
+    get:
+      tags:
+        - orders
+      summary: "(M14-IF-030)配車情報単一取得"
+      operationId: getOrderByOrderId
+      parameters:
+        - in: path
+          name: order_id
+          description: リクエスター 配車依頼ユニークID<br/>- t_order.requester_order_id
+          example: 1
+          required: true
+          schema:
+            $ref: "#/components/schemas/orderId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOrder"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401UnAuthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalServerError"
+    delete:
+      tags:
+        - orders
+      summary: "(M14-IF-040)配車依頼キャンセル"
+      operationId: deleteOrderByOrderId
+      parameters:
+        - in: path
+          name: order_id
+          description: リクエスター 配車依頼ユニークID<br/>- t_order.requester_order_id
+          example: 1
+          required: true
+          schema:
+            $ref: "#/components/schemas/orderId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteOrder"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401UnAuthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalServerError"
+components:
+  schemas:
+    orderId:
+      type: string
+      description: リクエスター側 配車依頼ユニークID<br/>- t_order.requester_order_id
+      maxLength: 254
+      minLength: 1
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 共同配車システム 配車依頼ユニークID<br/>- t_order.order_id
+          example: 1
+          readOnly: true
+          minimum: 1
+        order_id:
+          type: string
+          description: リクエスター側 配車依頼ユニークID<br/>- t_order.requester_order_id
+          example: "123456789"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        company_id:
+          type: integer
+          description: 共同配車システム タクシー事業者ID<br/>- t_order.company_id
+          example: 1
+          writeOnly: true
+          minimum: 1
+        phone_number:
+          type: string
+          description: 顧客 電話番号<br/>- t_order.phone_number
+          example: "08012345678"
+          writeOnly: true
+          maxLength: 11
+          minLength: 10
+        email:
+          type: string
+          description: |
+            顧客 メールアドレス(※)
+
+            (※)配車結果の通知先メールアドレス。送信したいメールの種類はAPIではなくサーバ側で設定可（要設定依頼）。
+            - 即時配車受領: タクシーを手配しました
+            - 即時配車拒否: 配車リクエストを受け付けることができませんでした
+            - 予約受付: タクシー予約が確定しました
+            - 予約拒否: 予約が成立しませんでした
+            - 予約キャンセル: タクシー予約をキャンセルしました
+            <br/>- t_order.email
+          example: "example@example.com"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        passenger_name:
+          type: string
+          description: 顧客名<br/>- t_order.passenger_name
+          example: "顧客太郎"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        passenger_name_yomi:
+          type: string
+          description: 顧客名 読み<br/>- t_order.passenger_name_yomi
+          example: "こきゃくたろう"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        location_name:
+          type: string
+          description: 迎車地点名<br/>- t_order.location_name
+          example: "徳島駅"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        location_address:
+          type: string
+          description: 迎車地点 住所<br/>- t_order.location_address
+          example: "徳島県徳島市寺島本町西1−６１"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        location_lat:
+          type: number
+          description: 迎車地点 緯度（世界測地系 WGS84）<br/>- t_order.location_lat
+          format: float
+          example: 34.074200
+          writeOnly: true
+          maximum: 90
+          minimum: -90
+        location_lng:
+          type: number
+          description: 迎車地点 経度（世界測地系 WGS84）<br/>- t_order.location_lng
+          format: float
+          example: 134.551268
+          writeOnly: true
+          maximum: 180
+          minimum: -180
+        destination_name:
+          type: string
+          description: 降車地点名<br/>- t_order.destination_name
+          example: "大塚製薬"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        destination_address:
+          type: string
+          description: 降車地点 住所<br/>- t_order.destination_address
+          example: "徳島県鳴門市撫養町大桑島濘岩浜"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        destination_lat:
+          type: number
+          description: 降車地点 緯度（世界測地系 WGS84）<br/>- t_order.destination_lat
+          format: float
+          example: 34.074200
+          writeOnly: true
+          maximum: 90
+          minimum: -90
+        destination_lng:
+          type: number
+          description: 降車地点 経度（世界測地系 WGS84）<br/>- t_order.destination_lng
+          format: float
+          example: 134.551268
+          writeOnly: true
+          maximum: 180
+          minimum: -180
+        reserve_at:
+          type: string
+          description: 予約日時 （指定がある場合は予約として扱われ、指定がない場合は即時配車となる）<br/>- t_order.reserve_at
+          format: date-time
+          example: "2023-01-30T08:30:00+09:00"
+          writeOnly: true
+        requested_pickup_at:
+          type: string
+          description: 乗車希望時間<br/>- t_order.requested_pickup_at
+          format: date-time
+          example: "2030-12-30T08:30:00+09:00"
+          writeOnly: true
+        message:
+          type: string
+          description: 配車詳細情報<br/>- t_order.message
+          example: "介護タクシー希望"
+          writeOnly: true
+          maxLength: 254
+          minLength: 1
+        in_app_payment:
+          type: boolean
+          description: アプリ内決済を利用するかどうか。指定ない場合はfalse<br/>- t_order.in_app_payment
+          example: false
+          writeOnly: true
+        payment_id:
+          type: integer
+          description: 決済 ユニークID<br/>- t_payment.payment_id
+          example: 1
+          readOnly: true
+          minimum: 1
+        payment_status:
+          type: string
+          description: |
+            決済ステータス
+              pending: 待機中
+              in-progress: 進行中
+              succeed: 成功
+              failed: 失敗
+              canceled: キャンセル
+            <br/>- t_payment.payment_status
+          example: pending
+          readOnly: true
+      required:
+        - company_id
+        - phone_number
+        - location_lat
+        - location_lng
+    DeleteOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 共同配車システム 配車依頼ユニークID<br/>- t_order.order_id
+          example: 1
+          readOnly: true
+          minimum: 1
+    GetOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 共同配車システム 配車依頼ユニークID<br/>- t_order.order_id
+          example: 1
+          readOnly: true
+          minimum: 1
+        order_id:
+          type: string
+          description: リクエスター 配車依頼ユニークID(配車依頼作成時に指定がなかった場合は共同配車システム側で自動生成されたものを返却)<br/>- t_order.requester_order_id
+          example: 82YVIU9tXVmTmlLSwQ==
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        location_name:
+          type: string
+          description: 迎車地点名<br/>- t_order.location_name
+          example: "徳島駅"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        location_address:
+          type: string
+          description: 迎車地点 住所<br/>- t_order.location_address
+          example: "徳島県徳島市寺島本町西1−６１"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        location_lat:
+          type: number
+          description: 迎車地点 緯度<br/>- t_order.location_lat
+          format: float
+          example: 34.074200
+          readOnly: true
+          maximum: 90
+          minimum: -90
+        location_lng:
+          type: number
+          description: 迎車地点 経度<br/>- t_order.location_lng
+          format: float
+          example: 134.551268
+          readOnly: true
+          maximum: 180
+          minimum: -180
+        destination_name:
+          type: string
+          description: 降車地点名(降車地点を指定した場合のみ有効)<br/>- t_order.destination_name
+          example: "大塚製薬"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        destination_address:
+          type: string
+          description: 降車地点 住所(降車地点を指定した場合のみ有効)<br/>- t_order.destination_address
+          example: "徳島県鳴門市撫養町大桑島濘岩浜"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        destination_lat:
+          type: number
+          description: 降車地点 緯度(降車地点を指定した場合のみ有効)<br/>- t_order.destination_lat
+          format: float
+          example: 34.074200
+          readOnly: true
+          maximum: 90
+          minimum: -90
+        destination_lng:
+          type: number
+          description: 降車地点 経度(降車地点を指定した場合のみ有効)<br/>- t_order.destination_lng
+          format: float
+          example: 134.551268
+          readOnly: true
+          maximum: 180
+          minimum: -180
+        message:
+          type: string
+          description: 配車詳細情報<br/>- t_order.message
+          example: "介護タクシー希望"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        updated_at:
+          type: string
+          description: 更新日時<br/>- t_order.updated_at
+          format: date-time
+          example: "2021-12-30T08:30:00+09:00"
+          readOnly: true
+        order_status:
+          type: string
+          description: |
+            配車ステータス
+              01: 未配車
+              02: 振替中
+              03: 迎車中
+              04: 到着
+              05: 実車中
+              06: 予約確定
+              07: 事業者キャンセル
+              08: 顧客キャンセル
+              09: 降車
+            <br/>- t_order.order_status
+          example: "01"
+          enum:
+            - "01"
+            - "02"
+            - "03"
+            - "04"
+            - "05"
+            - "06"
+            - "07"
+            - "08"
+            - "09"
+          readOnly: true
+        arrival_time:
+          type: string
+          description: 到着時刻(order_status = 03の時のみ有効)<br/>- t_order.arrival_time
+          format: date-time
+          example: "2023-01-30T08:30:00+09:00"
+          readOnly: true
+        dropoff_time:
+          type: string
+          description: 降車時刻(order_status = 03 or 05の時のみ有効)<br/>- t_order.dropoff_time
+          format: date-time
+          example: "2023-12-30T08:30:00+09:00"
+          readOnly: true
+        crew_name:
+          type: string
+          description: 乗務員名(order_status = 03の時のみ有効)<br/>- t_crew_assign.crew_name
+          example: "顧客太郎"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        crew_number:
+          type: string
+          description: 乗務員 無線番号(order_status = 03の時のみ有効)<br/>- t_crew_assign.crew_number
+          example: "1234"
+          readOnly: true
+          maxLength: 4
+          minLength: 1
+        crew_plate_number:
+          type: string
+          description: 乗務員 車両番号(order_status = 03の時のみ有効)<br/>- t_crew_assign.crew_plate_number
+          example: "1234"
+          readOnly: true
+          maxLength: 4
+          minLength: 1
+        crew_lat:
+          type: number
+          description: 乗務員 現在地 緯度(order_status = 03の時のみ有効)<br/>- t_crew_current_location.crew_lat
+          format: float
+          example: 34.074200
+          readOnly: true
+          maximum: 90
+          minimum: -90
+        crew_lng:
+          type: number
+          description: 乗務員 現在地 経度(order_status = 03の時のみ有効)<br/>- t_crew_current_location.crew_lng
+          format: float
+          example: 134.551268
+          readOnly: true
+          maximum: 180
+          minimum: -180
+        degree:
+          type: number
+          description: 乗務員 向き(order_status = 03の時のみ有効)<br/>- t_crew_current_location.degree
+          format: float
+          readOnly: true
+          maximum: 360
+          minimum: 0
+        company_id:
+          type: integer
+          description: タクシー事業者ID<br/>- t_order.company_id
+          example: 1
+          readOnly: true
+          minimum: 1
+        company_name:
+          type: string
+          description: タクシー事業所名<br/>- m_company.company_name
+          example: "吉野川タクシー"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        contact:
+          type: string
+          description: タクシー事業者連絡先<br/>- m_company.contact
+          example: "0120-999-999"
+          readOnly: true
+          maxLength: 254
+          minLength: 1
+        reserve_at:
+          type: string
+          format: date-time
+          description: 予約日時(予約作成完了後のみ有効)<br/>- t_order.reserve_at
+          example: "2021-12-30T08:30:00+09:00"
+          readOnly: true
+        payment_id:
+          type: integer
+          description: 決済 ユニークID<br/>- t_payment.payment_id
+          example: 1
+          readOnly: true
+          minimum: 1
+        payment_status:
+          type: string
+          description: |
+            決済ステータス
+              pending: 待機中
+              in-progress: 進行中
+              succeed: 成功
+              failed: 失敗
+              canceled: キャンセル
+            <br/>- t_payment.payment_status
+          enum:
+            - pending
+            - in-progress
+            - succeed
+            - failed
+            - canceled
+          example: pending
+          readOnly: true
+  responses:
+    400BadRequest:
+      description: BadRequest
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    401UnAuthorized:
+      description: UnAuthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    404NotFound:
+      description: NotFound
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    409Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    500InternalServerError:
+      description: InternalServerError
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
