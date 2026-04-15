@@ -34,7 +34,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: dist
+          path: demo-api/dist
+
 
   deploy:
     runs-on: ubuntu-latest
