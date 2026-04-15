@@ -63,6 +63,6 @@ jobs:
         with:
           app-name: 'dummy-server-api'
           slot-name: 'Production'
-          package: demo-api/dist
+          package: dist
 
           
