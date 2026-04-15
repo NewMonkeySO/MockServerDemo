@@ -34,10 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: |
-            demo-api/dist
-            demo-api/package.json
-            demo-api/package-lock.json
+          path: demo-api/
 
 
 
