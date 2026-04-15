@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
-import { DELETE_ORDER_RESPONSE, GET_ORDER_BY_ORDER_ID_RESPONSE, GET_ORDERS_BY_ORDER_ID_RESPONSE, POST_ORDER_RESPONSE } from '../../constants/orders/index.js';
+import { GET_ORDERS_BY_ORDER_ID_RESPONSE, POST_ORDER_RESPONSE } from '../../constants/orders/index.js';
 import { postOrderRequestSchema } from '../../schemas/orders/index.js';
 import { zValidator } from '@hono/zod-validator';
-import z from 'zod';
 const orders = new Hono();
 /** POST /orders */
 orders.post('/orders', zValidator('json', postOrderRequestSchema, (result, c) => {
@@ -22,16 +21,17 @@ orders.post('/orders', zValidator('json', postOrderRequestSchema, (result, c) =>
     return c.json(res, 200);
 });
 /** GET /orders/by/order-id */
+/** @TODO クエリーパラメーターに合わせてレスポンスを修正する */
 orders.get('/orders/by/order-id', async (c) => {
-    const orderIds = c.req.query("order_ids");
+    const query = c.req.query("order_ids");
+    const orderIds = query ? query.split(',') : undefined;
+    console.log("Received order_ids:", orderIds);
     //400
     if (!orderIds) {
         return c.json({
-            message: "クエリーパラメータでorder_idsを指定して下さい",
+            message: "クエリーパラメータが正しくありません",
         }, 400);
     }
-    const idList = orderIds.split(',');
-    console.log("Received order_ids:", idList.map(Number));
     //401
     //404
     //409
@@ -42,35 +42,47 @@ orders.get('/orders/by/order-id', async (c) => {
 /** GET /orders/by/order-id/{order_id} */
 orders.get('/orders/by/order-id/:order_id', async (c) => {
     const orderId = c.req.param("order_id");
+    console.log("Received order_id:", orderId);
     //400
     if (!orderId) {
         return c.json({
-            message: "パスパラメータでorder_idを指定して下さい",
+            message: "パスパラメータが正しくありません",
         }, 400);
     }
-    console.log("Received order_id:", orderId);
     //401
-    //404
     //409
     //500
-    const res = GET_ORDER_BY_ORDER_ID_RESPONSE;
+    const res = GET_ORDERS_BY_ORDER_ID_RESPONSE.find(order => order.order_id === orderId);
+    //404
+    if (!res) {
+        return c.json({
+            message: `order_id{${orderId}}は見つかりませんでした`,
+        }, 404);
+    }
     return c.json(res, 200);
 });
 /** DELETE /orders/by/order-id/{order_id} */
 orders.delete('/orders/by/order-id/:order_id', async (c) => {
     const orderId = c.req.param("order_id");
+    console.log("Received order_id:", orderId);
     //400
     if (!orderId) {
         return c.json({
-            message: "パスパラメータでorder_idを指定して下さい",
+            message: "パスパラメータが正しくありません",
         }, 400);
     }
-    console.log("Received order_id:", orderId);
     //401
-    //404
     //409
     //500
-    const res = DELETE_ORDER_RESPONSE;
+    const target = GET_ORDERS_BY_ORDER_ID_RESPONSE.find(order => order.order_id === orderId);
+    if (!target) {
+        return c.json({
+            message: `order_id{${orderId}}は見つかりませんでした`,
+        }, 404);
+    }
+    const res = {
+        id: target.id,
+    };
     return c.json(res, 200);
 });
 export { orders };
